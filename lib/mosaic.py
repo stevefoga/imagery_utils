@@ -242,6 +242,7 @@ class ImageInfo:
             self.xres = None
             self.yres = None
             self.lima_score = None
+            self.lima_only = None
 
         ds = None
         
@@ -557,6 +558,8 @@ class ImageInfo:
             if not params.lima or self.lima_score == -9999:
                 self.lima_score = -9999
                 limawt = 0
+            elif params.limaOnly:
+                limawt = 100
             else:
                 limawt = 10
 
@@ -575,9 +578,13 @@ class ImageInfo:
                 score = -1
                         
             if not score == -1:
-                rawscore = ccwt * (1-self.cloudcover) + sunelwt * (self.sunel/90) + onawt * ((90-self.ona)/90.0) + \
-                           datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1)) + \
-                           limawt * self.lima_score
+                if not params.limaOnly:
+                    rawscore = ccwt * (1-self.cloudcover) + sunelwt * (self.sunel/90) + onawt * ((90-self.ona)/90.0) + \
+                               datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1)) + \
+                               limawt * self.lima_score
+                else:
+                    rawscore = limawt * self.lima_score
+
                 score = rawscore * self.panfactor  
         
         self.score = score
@@ -1055,6 +1062,7 @@ def getMosaicParameters(iinfo,options):
     params.datatype = iinfo.datatype
     params.useExposure = options.use_exposure
     params.lima = options.use_pan_lima_score
+    params.limaOnly = options.lima_score_only
     
     if options.tday is not None:
         params.m = int(options.tday.split("-")[0])
