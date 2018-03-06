@@ -173,6 +173,14 @@ class ImageInfo:
             self.datatype = ds.GetRasterBand(1).DataType
             self.datatype_readable = gdal.GetDataTypeName(self.datatype)
 
+
+            score_file = os.path.splitext(self.srcfp)[0] + '.score'
+            if os.path.isfile(score_file):
+                with open(score_file, 'r') as f:
+                    self.lima_score = float(f.readline())
+            else:
+                self.lima_score = -9999
+
             gtf = ds.GetGeoTransform()
             num_gcps = ds.GetGCPCount()
             
@@ -233,6 +241,7 @@ class ImageInfo:
             self.datatype_readable = None
             self.xres = None
             self.yres = None
+            self.lima_score = None
 
         ds = None
         
@@ -331,7 +340,7 @@ class ImageInfo:
             
             else:
                 try:
-                    metad = getGEMetadataAsXml(metapath)
+                    metad = utils.getGEMetadataAsXml(metapath)
                 except Exception, err:
                     logger.debug("ERROR parsing metadata: %s, %s" %(err,metapath))
                 #### Write IK01 code 
@@ -544,6 +553,14 @@ class ImageInfo:
                 self.year_diff = -9999
                 yeardiffwt = 0
                 
+            #### Handle lima_tile values
+            if not params.lima or self.lima_score == -9999:
+                self.lima_score = -9999
+                limawt = 0
+            else:
+                limawt = 10
+
+
             #### Handle nonesense or nodata cloud cover values
             if self.cloudcover < 0 or self.cloudcover > 1:
                 self.cloudcover = params.max_cc
@@ -559,7 +576,8 @@ class ImageInfo:
                         
             if not score == -1:
                 rawscore = ccwt * (1-self.cloudcover) + sunelwt * (self.sunel/90) + onawt * ((90-self.ona)/90.0) + \
-                           datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1))
+                           datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1)) + \
+                           limawt * self.lima_score
                 score = rawscore * self.panfactor  
         
         self.score = score
@@ -1036,6 +1054,7 @@ def getMosaicParameters(iinfo,options):
     params.proj = iinfo.proj
     params.datatype = iinfo.datatype
     params.useExposure = options.use_exposure
+    params.lima = options.use_pan_lima_score
     
     if options.tday is not None:
         params.m = int(options.tday.split("-")[0])

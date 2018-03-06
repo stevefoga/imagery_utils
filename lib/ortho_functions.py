@@ -1,7 +1,7 @@
 import os, string, sys, shutil, math, glob, re, tarfile, logging, platform, argparse
 from datetime import datetime, timedelta
 
-from lib import utils, taskhandler
+from lib import utils, taskhandler, generate_score
 from xml.dom import minidom
 from xml.etree import cElementTree as ET
 
@@ -109,6 +109,8 @@ def buildParentArgumentParser():
                       help="skip verification of image-DEM overlap")
     parser.add_argument("--no-pyramids", action='store_true', default=False, help='suppress calculation of output image pyramids')
     parser.add_argument("--ortho-height", type=long, help='constant elevation to use for orthorectification (value should be in meters above the wgs84 ellipoid)')
+    parser.add_argument("--pan-score-from-lima", action='store_true', default=False,
+                        help='generate correlation score from pan band imagery using LIMA, writes to .score file')
 
 
     return parser, pos_arg_keys
@@ -251,6 +253,7 @@ def process_image(srcfp,dstfp,args,target_extent_geom=None):
     
         #### Calculate Output File
         if not err == 1 and os.path.isfile(info.warpfile):
+            logger.debug("Warpfile already exists. Location: {0}".format(info.warpfile))
             rc = calcStats(args,info)
             if rc == 1:
                 err = 1
@@ -262,6 +265,12 @@ def process_image(srcfp,dstfp,args,target_extent_geom=None):
         if rc == 1:
             err = 1
             logger.error("Error in writing metadata file")
+
+    #### Calculate correlation score
+    if args.pan_score_from_lima:
+        logger.info("Calculating LIMA correlation score...")
+        logger.info("Input: {0} | Output: {1}".format(info.localdst, info.dstdir))
+        generate_score.generate_score(info.localdst)
 
     #### Copy image to final location if working dir is used
     if args.wd is not None:
