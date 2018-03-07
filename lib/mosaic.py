@@ -498,7 +498,19 @@ class ImageInfo:
                             if exfact > multi_exposure_thresholds[self.sensor]:
                                 logger.debug("Image overexposed: %s --> %i" %(self.srcfp,exfact))
                                 score = -1
-            
+
+            #### Handle LIMA scores
+            '''
+            # old logic, may be re-used later
+            if not params.lima or self.lima_score == -9999:
+                self.lima_score = -9999
+                limawt = 0
+            elif params.limaOnly:
+                limawt = 100
+            else:
+                limawt = 10
+            '''
+
             #### Test if acqdate if needed, get date difference
             if params.m != 0:
                 if self.acqdate is None:
@@ -513,19 +525,38 @@ class ImageInfo:
                     
                     self.date_diff = min(tdeltas)
             
-            
-                #### Assign weights
-                ccwt = 30
-                sunelwt = 10
-                onawt = 5
-                datediffwt = 55
+
+                if self.lima_score == -9999:
+                    #### Assign weights
+                    ccwt = 30
+                    sunelwt = 10
+                    onawt = 5
+                    datediffwt = 55
+                    limawt = 0
+                else:
+                    #### Assign weights
+                    ccwt = 10
+                    sunelwt = 10
+                    onawt = 5
+                    datediffwt = 55
+                    limawt = 20
                 
             else:
-                self.date_diff = -9999
-                ccwt = 48
-                sunelwt = 28
-                onawt = 24
-                datediffwt = 0
+                if self.lima_score == -9999:
+                    self.date_diff = -9999
+                    ccwt = 48
+                    sunelwt = 28
+                    onawt = 24
+                    datediffwt = 0
+                    limawt = 0
+                else:
+                    self.date_diff = -9999
+                    ccwt = 13
+                    sunelwt = 28
+                    onawt = 24
+                    datediffwt = 0
+                    limawt = 35
+
 
             if params.y != 0:
                 if self.acqdate is None:
@@ -554,14 +585,7 @@ class ImageInfo:
                 self.year_diff = -9999
                 yeardiffwt = 0
                 
-            #### Handle lima_tile values
-            if not params.lima or self.lima_score == -9999:
-                self.lima_score = -9999
-                limawt = 0
-            elif params.limaOnly:
-                limawt = 100
-            else:
-                limawt = 10
+
 
 
             #### Handle nonesense or nodata cloud cover values
@@ -578,12 +602,12 @@ class ImageInfo:
                 score = -1
                         
             if not score == -1:
-                if not params.limaOnly:
-                    rawscore = ccwt * (1-self.cloudcover) + sunelwt * (self.sunel/90) + onawt * ((90-self.ona)/90.0) + \
-                               datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1)) + \
-                               limawt * self.lima_score
-                else:
-                    rawscore = limawt * self.lima_score
+                #if not params.limaOnly:
+                rawscore = ccwt * (1-self.cloudcover) + sunelwt * (self.sunel/90) + onawt * ((90-self.ona)/90.0) + \
+                           datediffwt * ((183 - self.date_diff)/183.0) + yeardiffwt * (1.0 / (self.year_diff + 1)) + \
+                           limawt * self.lima_score
+                #else:
+                #    rawscore = limawt * self.lima_score
 
                 score = rawscore * self.panfactor  
         
