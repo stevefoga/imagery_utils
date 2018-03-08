@@ -535,11 +535,11 @@ class ImageInfo:
                     limawt = 0
                 else:
                     #### Assign weights
-                    ccwt = 10
+                    ccwt = 5
                     sunelwt = 10
                     onawt = 5
                     datediffwt = 55
-                    limawt = 20
+                    limawt = 25
                 
             else:
                 if self.lima_score == -9999:
@@ -551,11 +551,11 @@ class ImageInfo:
                     limawt = 0
                 else:
                     self.date_diff = -9999
-                    ccwt = 13
+                    ccwt = 8
                     sunelwt = 28
                     onawt = 24
                     datediffwt = 0
-                    limawt = 35
+                    limawt = 40
 
 
             if params.y != 0:
