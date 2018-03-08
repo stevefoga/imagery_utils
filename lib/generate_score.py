@@ -133,8 +133,8 @@ def get_lima_tile(scene_in):
             ld = bbox[0]
             ud = bbox[2]
         elif grid_crd.lower() == "y":
-            ld = bbox[1]
-            ud = bbox[3]
+            ld = bbox[3]
+            ud = bbox[1]
         else:
             logger.error("Incorrect grid coordinate {0} supplied, should be 'x' or 'y'".format(grid_crd))
             sys.exit(-1)
