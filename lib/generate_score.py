@@ -22,8 +22,6 @@ from skimage.measure import compare_ssim as ssim
 
 # TODO: find way to incorporate MODIS pole hole filler
 
-# TODO: add coastline mask
-
 # create logger
 logger = logging.getLogger("logger")
 logger.setLevel(logging.DEBUG)
