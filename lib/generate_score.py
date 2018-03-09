@@ -180,29 +180,10 @@ def merge(img_list, fn_out, nd_value=0):
     :param nd_value: <int> (default = 0)
     :return:
     """
-    if platform.system() == 'Windows':
-        shellflag = True
-    else:
-        shellflag = False
+    logger.info("Merging {0} tiles ({1}) to file {2}".format(len(img_list), img_list, fn_out))
 
-    logger.info("Merging tiles {0} to file {1}".format(img_list, fn_out))
-
-    # TODO: find a more elegant/dynamic way to do this; subprocess doesn't seem to like lists...
-    if len(img_list) == 2:
-        logger.debug('2 tiles to be merged.')
-        subprocess.call(['gdal_merge.py', '-o', fn_out, '-of', 'GTiff', '-n', str(nd_value), img_list[0], img_list[1]],
-                        shell=shellflag)
-    elif len(img_list) == 3:
-        logger.debug('3 tiles to be merged.')
-        subprocess.call(['gdal_merge.py', '-o', fn_out, '-of', 'GTiff', '-n', str(nd_value), img_list[0], img_list[1],
-                         img_list[2]], shell=shellflag)
-    elif len(img_list) == 4:
-        logger.debug('4 tiles to be merged.')
-        subprocess.call(['gdal_merge.py', '-o', fn_out, '-of', 'GTiff', '-n', str(nd_value), img_list[0], img_list[1],
-                        img_list[2], img_list[3]], shell=shellflag)
-    else:
-        logger.error("Number of tiles must be 2, 3, or 4. Number of submitted tiles: {0}".format(len(img_list)))
-        sys.exit(-1)
+    subprocess.call(subprocess.list2cmdline(['gdal_merge.py', '-o', fn_out, '-of', 'GTiff', '-n', str(nd_value)] +
+                                            img_list), shell=True)
 
     if not os.path.isfile(fn_out):
         logger.error("Output file {0} does not exist".format(fn_out))
