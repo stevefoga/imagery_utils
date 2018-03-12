@@ -107,6 +107,7 @@ def get_lima_tile(scene_in):
     Build the name of the tile(s) based upon the extent of the input scene. Assumes LIMA RGBREF tiles as input.
 
     :param scene_in: <str> path to image file
+
     :return: <list> full path and name of LIMA tile(s)
     """
     # TODO: add path for MODIS pole hole filler
@@ -244,13 +245,15 @@ def write_score(scene_in, final_score):
     logger.debug('ssim score {0} written to {1}'.format(final_score, score_out))
 
 
-def generate_score(scene, pct_thresh=0.95, water_mask=None):
+def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, is_tiled=True):
     """
     Generate correlation score between input scene and LIMA tile; write .score file to dir_out.
 
     :param scene: <str> Path to input scene.
     :param pct_thresh: <int or float> Percent of NoData allowed between scene and tile (range=0.0-1.0; default=0.95)
     :param water_mask: <str> Path to water mask (default=None)
+    :param tile_path: <str> Path to GeoTIFF tile(s), not necessary if LIMA
+    :param is_tiled: <bool> True if mosaic is split up between files; False if mosaic in single image
     :return:
     """
     if water_mask:
@@ -262,7 +265,19 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None):
     scene_gdal = read_image(scene)
 
     # identify LIMA tile(s) (merge if necessary)
-    tile_path, merged_tiles, uid = build_lima_tiles(scene, os.path.dirname(scene))
+    if not tile_path and is_tiled:
+        tile_path, merged_tiles, uid = build_lima_tiles(scene, os.path.dirname(scene))
+
+    # if a single, non-LIMA mosaic file is used
+    if tile_path and not is_tiled:
+        tile_path = [tile_path]
+        uid = str(uuid.uuid4())
+
+    # if tiled, non-LIMA mosaic is used
+    if tile_path and is_tiled:
+        logger.error("Non-LIMA mosaic tiles are currently not supported. The get_lima_tile() function must be modified "
+                     "to accept a new tile naming convention and dimensions.")
+        sys.exit(-1)
 
     # if no valid tile, set score to -9999 and continue
     if tile_path is None:
