@@ -456,7 +456,11 @@ class ImageInfo:
         
         else:
             
-            #### Assign panfactor if pan images are to be included in a multispectral mosaic   
+            #### Override LIMA score if option is was not specified
+            if not params.lima:
+                self.lima_score = -9999
+
+            #### Assign panfactor if pan images are to be included in a multispectral mosaic
             if self.bands == 1 and params.force_pan_to_multi is True:
                 self.panfactor = 0.5
             else:
