@@ -546,9 +546,9 @@ class ImageInfo:
                     self.date_diff = -9999
                     ccwt = 13
                     sunelwt = 28
-                    onawt = 24
+                    onawt = 15
                     datediffwt = 0
-                    limawt = 35
+                    limawt = 44
 
 
             if params.y != 0:
