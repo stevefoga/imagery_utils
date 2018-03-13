@@ -245,7 +245,7 @@ def write_score(scene_in, final_score):
     logger.debug('ssim score {0} written to {1}'.format(final_score, score_out))
 
 
-def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, is_tiled=True):
+def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_tiled=False):
     """
     Generate correlation score between input scene and LIMA tile; write .score file to dir_out.
 
@@ -253,7 +253,7 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, is_t
     :param pct_thresh: <int or float> Percent of NoData allowed between scene and tile (range=0.0-1.0; default=0.95)
     :param water_mask: <str> Path to water mask (default=None)
     :param tile_path: <str> Path to GeoTIFF tile(s), not necessary if LIMA
-    :param is_tiled: <bool> True if mosaic is split up between files; False if mosaic in single image
+    :param not_tiled: <bool> False if mosaic is split up between files; True if mosaic in single image
     :return:
     """
     if water_mask:
@@ -265,16 +265,16 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, is_t
     scene_gdal = read_image(scene)
 
     # identify LIMA tile(s) (merge if necessary)
-    if not tile_path and is_tiled:
+    if not tile_path and not not_tiled:
         tile_path, merged_tiles, uid = build_lima_tiles(scene, os.path.dirname(scene))
 
     # if a single, non-LIMA mosaic file is used
-    if tile_path and not is_tiled:
+    if tile_path and not_tiled:
         tile_path = [tile_path]
         uid = str(uuid.uuid4())
 
     # if tiled, non-LIMA mosaic is used
-    if tile_path and is_tiled:
+    if tile_path and not not_tiled:
         logger.error("Non-LIMA mosaic tiles are currently not supported. The get_lima_tile() function must be modified "
                      "to accept a new tile naming convention and dimensions.")
         sys.exit(-1)

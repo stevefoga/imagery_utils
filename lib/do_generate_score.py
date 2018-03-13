@@ -19,7 +19,7 @@ logger = logging.getLogger("logger")
 logger.setLevel(logging.DEBUG)
 
 
-def main(src, pct_thresh, overwrite_invalid, overwrite_all, dryrun, is_tiled=True, water_mask=None, tile_path=None):
+def main(src, pct_thresh, overwrite_invalid, overwrite_all, not_tiled, dryrun, water_mask=None, tile_path=None):
 
     # if dir, get files, else assume single file was supplied
     if os.path.isdir(src):
@@ -49,7 +49,7 @@ def main(src, pct_thresh, overwrite_invalid, overwrite_all, dryrun, is_tiled=Tru
 
         if not dryrun:
             generate_score.generate_score(fn_in, pct_thresh=pct_thresh, water_mask=water_mask, tile_path=tile_path,
-                                          is_tiled=is_tiled)
+                                          not_tiled=not_tiled)
 
     if dryrun:
         logger.info('--dryrun used, no .score files generated')
@@ -68,8 +68,8 @@ if __name__ == "__main__":
     parser.add_argument("--overwrite-invalid", help="Overwrite invalid (-9999) scores", action="store_true",
                         required=False)
     parser.add_argument("--overwrite-all", help="Overwrite all .score files", action="store_true", required=False)
-    parser.add_argument("--is-tiled", help="True if mosaic split into multiple files, False if single mosaic image",
-                        action="store_true")
+    parser.add_argument("--not-tiled", help="Use if mosaic is single image (as opposed to being split into chunks)",
+                        action="store_false")
 
     parser.add_argument("--dryrun", help="Print cmd, do not submit job", dest="dryrun", action="store_true",
                         required=False)
