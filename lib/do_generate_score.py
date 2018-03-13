@@ -60,16 +60,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create mosaic correlation score from existing ortho images.")
 
-    parser.add_argument("src", help="Input file or ", type=str)
+    parser.add_argument("src", help="Input file or directory (.tif only)", type=str)
     parser.add_argument("--pct-thresh", help="Percent nodata threshold to accept (default=0.95)", type=float,
                         default=0.95, required=False)
-    parser.add_argument("--water-mask", help="Water mask (default=None)", type="str", required=False)
-    parser.add_argument("--tile-path", help="Path to tile mosaic(s) (required if not LIMA)", type="str", required=False)
+    parser.add_argument("--water-mask", help="Path to water mask (default=None)", required=False)
+    parser.add_argument("--tile-path", help="Path to tile mosaic(s) (required if not LIMA)", required=False)
     parser.add_argument("--overwrite-invalid", help="Overwrite invalid (-9999) scores", action="store_true",
                         required=False)
     parser.add_argument("--overwrite-all", help="Overwrite all .score files", action="store_true", required=False)
     parser.add_argument("--is-tiled", help="True if mosaic split into multiple files, False if single mosaic image",
-                        type="bool", action="store_true")
+                        action="store_true")
 
     parser.add_argument("--dryrun", help="Print cmd, do not submit job", dest="dryrun", action="store_true",
                         required=False)
