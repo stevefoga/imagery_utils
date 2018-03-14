@@ -265,6 +265,7 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
     scene_gdal = read_image(scene)
 
     # identify LIMA tile(s) (merge if necessary)
+    merged_tiles = None
     if not tile_path and not not_tiled:
         tile_path, merged_tiles, uid = build_lima_tiles(scene, os.path.dirname(scene))
 
@@ -379,6 +380,9 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
         output_band.SetNoDataValue(255)
         gdal.Translate(water_mask_clip, water_mask_gdal, projWin=[ulx, uly, lrx, lry])
 
+        water_clip_arr = img_to_array(water_mask_clip)
+        water_mask_mask = np.ma.masked_values(water_clip_arr, 255)
+
     # read images as arrays
     scene_res_arr = img_to_array(scene_res_gdal)
 
@@ -396,9 +400,6 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
     tile_mask = np.ma.masked_values(tile_clip_arr, 0)
 
     if water_mask:
-        water_clip_arr = img_to_array(water_mask_clip)
-        water_mask_mask = np.ma.masked_values(water_clip_arr, 255)
-
         # apply 'water_mask' to clip_mask and tile_mask
         clip_mask = np.ma.masked_values(water_mask_mask.mask, clip_mask)
         tile_mask = np.ma.masked_values(water_mask_mask.mask, tile_mask)
