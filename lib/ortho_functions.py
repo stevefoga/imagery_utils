@@ -515,7 +515,7 @@ def calcStats(args,info):
             logger.error("Cannot create virtual dataset: %s" %info.vrtfile)
 
     else:
-        logger.error("Cannot open dataset: %s" %wds_fp)
+        logger.error("Cannot open dataset: %s" % info.warpfile)
 
     vds = None
     wds = None
