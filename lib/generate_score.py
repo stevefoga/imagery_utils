@@ -303,7 +303,7 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
     scene_resample = os.path.join(os.path.dirname(scene), os.path.splitext(os.path.basename(scene))[0] +
                                   '_{0}m-resample.tif'.format(int(tile_res)))
     tile_clip = os.path.join(os.path.dirname(tile_path[0]),
-                             os.path.splitext(os.path.basename(tile_path[0]))[0] + '_clip.tif')
+                             os.path.splitext(os.path.basename(tile_path[0]))[0] + '_{0}-clip.tif'.format(uid))
     if water_mask:
         if not uid:
             uid = str(uuid.uuid4())
