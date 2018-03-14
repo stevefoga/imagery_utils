@@ -11,8 +11,10 @@ Requires GDAL >= 2.1
 """
 import logging
 import os
+import sys
 import glob
 import generate_score
+import taskhandler
 
 # create logger
 logger = logging.getLogger("logger")
@@ -87,10 +89,59 @@ if __name__ == "__main__":
     parser.add_argument("--overwrite-all", help="Overwrite all .score files", action="store_true", required=False)
     parser.add_argument("--not-tiled", help="Use if mosaic is single image (as opposed to being split into chunks)",
                         action="store_true")
+    parser.add_argument("--parallel-processes", help="number of processes to spawn (default=1)", default=1)
 
     parser.add_argument("--dryrun", help="Print cmd, do not submit job", dest="dryrun", action="store_true",
                         required=False)
 
     args = parser.parse_args()
 
-    main(**vars(args))
+    if args.parallel_processes > 1:
+        # build script path
+        scriptpath = os.path.abspath(sys.argv[0])
+        gen_score_script = os.path.join(os.path.dirname(scriptpath), 'generate_score.py')
+
+        # convert args
+        pos_arg_keys = ["src"]
+        arg_keys_to_remove = (
+            "pct_thresh",
+            "water_mask",
+            "tile_path",
+            "overwrite_invalid",
+            "overwrite_all",
+            "not_tiled",
+            "parallel_processes",
+            "dryrun"
+        )
+        gscore_arg_str = taskhandler.convert_optional_args_to_string(args, pos_arg_keys, arg_keys_to_remove)
+
+        # get all files
+        if os.path.isdir(args.src):
+            src = os.path.join(args.src, '')
+            fns_in = glob.glob(args.src + "*.tif")
+        else:
+            fns_in = [args.src]
+
+        task_queue = []
+        it = 0
+        for fn in fns_in:
+            it += 1
+            task = taskhandler.Task(
+                fn,
+                'Gscore{:04g}'.format(it),
+                'python',
+                '{} {} {}'.format(gen_score_script, fn, args.pct_thresh)
+            )
+
+            task_queue.append(task)
+
+        try:
+            task_handler = taskhandler.ParallelTaskHandler(args.parallel_processes)
+        except RuntimeError as e:
+            logger.error(e)
+        else:
+            logger.info("Number of child processes to spawn: {0}".format(task_handler.num_processes))
+            task_handler.run_tasks(task_queue)
+
+    else:
+        main(**vars(args))
