@@ -111,6 +111,7 @@ def buildParentArgumentParser():
     parser.add_argument("--ortho-height", type=long, help='constant elevation to use for orthorectification (value should be in meters above the wgs84 ellipoid)')
     parser.add_argument("--pan-score-from-lima", action='store_true', default=False,
                         help='generate correlation score from pan band imagery using LIMA, writes to .score file')
+    parser.add_argument("--pan-mosaic", help="mosaic file, or path to mosaic files used to calculate pan score (not required if PGC LIMA RGBREF)")
 
 
     return parser, pos_arg_keys
@@ -270,7 +271,18 @@ def process_image(srcfp,dstfp,args,target_extent_geom=None):
     if args.pan_score_from_lima:
         logger.info("Calculating LIMA correlation score...")
         logger.info("Input: {0} | Output: {1}".format(info.localdst, info.dstdir))
-        generate_score.generate_score(info.localdst)
+        if args.pan_mosaic:
+            logger.debug("Using {0} as base texture input to pan score generation".format(args.pan_mosaic))
+            if os.path.isfile(args.pan_mosaic):
+                generate_score.generate_score(info.localdst, tile_path=args.pan_moaic, not_tiled=True)
+            elif os.path.isdir(args.pan_mosaic):
+                generate_score.generate_score(info.localdst, tile_path=args.pan_moaic)
+            else:
+                logger.error("supplied --pan-mosaic argument ({0}) is not a valid file or directory".format(args.pan_mosaic))
+                err = 1
+        else:
+            logger.debug("Using standard PGC LIMA RGBREF path for texture input")
+            generate_score.generate_score(info.localdst)
 
     #### Copy image to final location if working dir is used
     if args.wd is not None:
