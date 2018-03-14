@@ -35,7 +35,7 @@ def read_image(img_in):
     :return: <osgeo.gdal.Dataset>
     """
     logger.info("Reading image {0}".format(img_in))
-    logger.info("img_in type: {0}".format(type(img_in)))
+    logger.debug("img_in type: {0}".format(type(img_in)))
 
     img = gdal.Open(img_in, gdal.GA_ReadOnly)
 
@@ -304,12 +304,14 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
     tile_clip = os.path.join(os.path.dirname(tile_path[0]),
                              os.path.splitext(os.path.basename(tile_path[0]))[0] + '_clip.tif')
     if water_mask:
+        if not uid:
+            uid = str(uuid.uuid4())
         water_mask_gdal = read_image(water_mask)
         water_gt = water_mask_gdal.GetGeoTransform()
         water_res = water_gt[1]
 
         water_mask_clip = os.path.join(os.path.dirname(scene), os.path.splitext(os.path.basename(water_mask))[0] +
-                                           '{0}_{1}m-wmask_clip.tif'.format(uid, int(tile_res)))
+                                       '{0}_{1}m-wmask_clip.tif'.format(uid, int(tile_res)))
 
     # get projection
     scene_proj = scene_gdal.GetProjection()
@@ -381,11 +383,18 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
     scene_res_arr = img_to_array(scene_res_gdal)
 
     tile_clip_gdal = read_image(tile_clip)
-    tile_clip_arr = img_to_array(tile_clip_gdal, band_num=0)
+    num_bands = tile_clip_gdal.RasterCount
+    if num_bands > 1:
+        logger.info("{0} bands in tile_clip_gdal, will use mean of all bands".format(num_bands))
+        tile_clip_arr = img_to_array(tile_clip_gdal, band_num=0)
+    else:
+        logger.debug("tile_clip_gdal has one band, reading 'band 1'")
+        tile_clip_arr = img_to_array(tile_clip_gdal, band_num=1)
 
     # mask arrays to common extent (both use NoData value of 0)
     clip_mask = np.ma.masked_values(scene_res_arr, 0)
     tile_mask = np.ma.masked_values(tile_clip_arr, 0)
+
     if water_mask:
         water_clip_arr = img_to_array(water_mask_clip)
         water_mask_mask = np.ma.masked_values(water_clip_arr, 255)
@@ -396,6 +405,15 @@ def generate_score(scene, pct_thresh=0.95, water_mask=None, tile_path=None, not_
 
     # make sure tile NoData does not exceed a certain percentage, otherwise the metric isn't accurate
     pct_data = np.float(np.sum(tile_mask.mask)) / np.product(tile_mask.shape)
+
+    # check for image extent equivalency
+    c_size = clip_mask.shape
+    t_size = tile_mask.shape
+    logger.debug(c_size)
+    logger.debug(t_size)
+    if c_size != t_size:
+        logger.error("arrays are not same dimensions. clip_mask: {0}; tile_mask {1}".format(c_size, t_size))
+        sys.exit(-1)
 
     # TODO: add check for MODIS pole hole (<= -82 deg. lat.)
 
