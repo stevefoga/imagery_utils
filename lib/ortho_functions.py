@@ -506,10 +506,10 @@ def stackIkBands(dstfp, members):
         keys.sort()
         for k in keys:
             if '"' not in m[k]:
-                m_list.append('-co "{}={}"'.format(k.replace("NITF_", ""), m[k]))
+                m_list.append('"{}={}"'.format(k.replace("NITF_", ""), m[k]))
         for k in meta_dict.keys():
             if '"' not in meta_dict[k]:
-                m_list.append('-co "{}={}"'.format(k.replace("NITF_", ""), meta_dict[k]))
+                m_list.append('"{}={}"'.format(k.replace("NITF_", ""), meta_dict[k]))
 
         #### Get the TRE metadata
         tres = src_ds.GetMetadata("TRE")
@@ -517,25 +517,42 @@ def stackIkBands(dstfp, members):
         tre_list = []
         for k in tres.keys():
             if '"' not in tres[k]:
-                tre_list.append('-co "TRE={}={}"'.format(k, src_ds.GetMetadataItem(k, "TRE")))
+                tre_list.append('"TRE={}={}"'.format(k, src_ds.GetMetadataItem(k, "TRE")))
 
         #### Close the source dataset
         src_ds = None
 
         #print("Merging bands")
+
+        # TODO
+        '''
+        build vrt
+        https://gis.stackexchange.com/questions/44003/python-equivalent-of-gdalbuildvrt
+        
+        make sure -separate option is supported
+        gdal.BuildVRT ... ?
+        '''
         cmd = 'gdalbuildvrt -separate "{}" "{}"'.format(vrt, '" "'.join(members))
 
         (err, so, se) = taskhandler.exec_cmd(cmd)
         if err == 1:
             rc = 1
 
+        # TODO
+        '''
+        gdal.Translate(dstName, src)
+        '''
+        gdal.Translate({0}, {1}, dstSRS={2}, creationOptions="IC=NC {3} {4}", format="NITF").format(
+            dstfp, vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list))
+
+        '''
         cmd = 'gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
                                                                                        " ".join(m_list),
                                                                                        " ".join(tre_list),
                                                                                        vrt,
                                                                                        dstfp)
-
         (err, so, se) = taskhandler.exec_cmd(cmd)
+        '''
         if err == 1:
             rc = 1
 
@@ -696,6 +713,10 @@ def calcStats(args, info):
     else:
         config_options = ''
 
+    # TODO
+    '''
+    gdal.Translate() - and produce stats
+    '''
     base_cmd = 'gdal_translate -stats'
 
     cmd = ('{} {} -ot {} -a_srs "{}" {}{}-of {} "{}" "{}"'.format(
@@ -718,6 +739,11 @@ def calcStats(args, info):
     if not args.no_pyramids:
         if args.format in ["GTiff"]:
             if os.path.isfile(info.localdst):
+                # TODO
+                '''
+                gdaladdoFile
+                https://stackoverflow.com/questions/33158526/how-to-correctly-use-gdaladdo-in-a-python-program
+                '''
                 cmd = ('gdaladdo -r {} "{}" 2 4 8 16'.format(args.pyramid_type, info.localdst))
                 (err, so, se) = taskhandler.exec_cmd(cmd)
                 if err == 1:
@@ -1234,6 +1260,10 @@ def WarpImage(args, info):
                         rc = 1
 
         #### convert to VRT and modify 4th band
+        # TODO
+        '''
+        gdal.Translate()
+        '''
         cmd = 'gdal_translate -of VRT "{0}" "{1}"'.format(info.localsrc, info.rawvrt)
         (err, so, se) = taskhandler.exec_cmd(cmd)
         if err == 1:
