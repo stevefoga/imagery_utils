@@ -652,8 +652,8 @@ def calcStats(args, info):
                 elif info.stretch == "ni":
                     # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
                     # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
-                    iLUT = [0, 0.22, 0.44, 0.66, 1.0]
-                    oLUT = [0, 0.5, 0.7, 0.9, 1.1]
+                    iLUT = [0, 0.25, 0.48, 0.7, 1.0]
+                    oLUT = [0, 0.5, 0.7, 0.9, 1.2]
                     #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
                     lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                range(len(iLUT)))
@@ -662,8 +662,8 @@ def calcStats(args, info):
                 elif info.stretch == "ni2":
                     # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
                     # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
-                    iLUT = [0, 0.25, 0.55, 0.75, 1.0]
-                    oLUT = [0, 0.3, 0.5, 0.7, 1.0]
+                    iLUT = [0, 0.25, 0.5, 0.75, 1.0]
+                    oLUT = [0, 0.35, 0.55, 0.75, 1.05]
                     #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
                     lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                range(len(iLUT)))
