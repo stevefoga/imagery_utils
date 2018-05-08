@@ -15,7 +15,7 @@ DGbandList = ['BAND_P', 'BAND_C', 'BAND_B', 'BAND_G', 'BAND_Y', 'BAND_R', 'BAND_
               'BAND_S2', 'BAND_S3', 'BAND_S4', 'BAND_S5', 'BAND_S6', 'BAND_S7', 'BAND_S8']
 formats = {'GTiff': '.tif', 'JP2OpenJPEG': '.jp2', 'ENVI': '.envi', 'HFA': '.img'}
 outtypes = ['Byte', 'UInt16', 'Float32']
-stretches = ["ns", "rf", "mr", "rd"]
+stretches = ["ns", "rf", "mr", "rd", "ni", "ni2"]
 resamples = ["near", "bilinear", "cubic", "cubicspline", "lanczos"]
 gtiff_compressions = ["jpeg95", "lzw"]
 exts = ['.ntf', '.tif']
@@ -248,7 +248,7 @@ def buildParentArgumentParser():
                         help="output pixel resolution in units of the projection")
     parser.add_argument("-c", "--stretch", choices=stretches, default="rf",
                         help="stretch type [ns: nostretch, rf: reflectance (default), mr: modified reflectance, rd: "
-                             "absolute radiance, au: automatically set]")
+                             "absolute radiance, au: automatically set, ni: noice_1, ni2: noice_2]")
     parser.add_argument("--resample", choices=resamples, default="near",
                         help="resampling strategy - mimicks gdalwarp options")
     parser.add_argument("--rgb", action="store_true", default=False,
@@ -629,6 +629,8 @@ def calcStats(args, info):
             for band in range(1, vds.RasterCount + 1):
                 calfact, offset = CFlist[band - 1]
 
+                # TODO: add stretches here!
+
                 if info.stretch == "ns":
                     LUT = "0:0,{}:{}".format(imax, omax)
                 elif info.stretch == "rf":
@@ -646,6 +648,28 @@ def calcStats(args, info):
                     lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                range(len(iLUT)))
                     LUT = ",".join(lLUT)
+
+                elif info.stretch == "ni":
+                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
+                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                    iLUT = [0, 0.22, 0.44, 0.66, 1.0]
+                    oLUT = [0, 0.5, 0.7, 0.9, 1.1]
+                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
+                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                               range(len(iLUT)))
+                    LUT = ",".join(lLUT)
+
+                elif info.stretch == "ni2":
+                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
+                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                    iLUT = [0, 0.25, 0.55, 0.75, 1.0]
+                    oLUT = [0, 0.3, 0.5, 0.7, 1.0]
+                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
+                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                               range(len(iLUT)))
+                    LUT = ",".join(lLUT)
+
+
 
                 if info.stretch != "ns":
                     logger.debug("Band Calibration Factors: %i %i %i", band, CFlist[band - 1][0], CFlist[band - 1][1])
