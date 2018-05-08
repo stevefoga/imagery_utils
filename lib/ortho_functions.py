@@ -687,7 +687,7 @@ def calcStats(args, info):
         if vds is not None:
             for band in range(1,vds.RasterCount+1):
                 if info.stretch == "ns":
-                    LUT = "0:0,{}:{}".format(imax,omax)
+                    LUT = "0:0,{}:{}".format(imax, omax)
                 else:
                     calfact,offset = CFlist[band-1]
                     if info.stretch == "rf":
