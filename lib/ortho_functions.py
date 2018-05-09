@@ -408,6 +408,7 @@ def process_image(srcfp, dstfp, args, target_extent_geom=None):
     if not os.path.isfile(info.dstfp):
         #### Warp Image
         if not err == 1 and not os.path.isfile(info.warpfile):
+            # TODO
             rc = WarpImage(args, info)
             if rc == 1:
                 err = 1
@@ -524,7 +525,7 @@ def stackIkBands(dstfp, members):
 
         #print("Merging bands")
 
-        # TODO
+
         '''
         build vrt
         https://gis.stackexchange.com/questions/44003/python-equivalent-of-gdalbuildvrt
@@ -532,18 +533,23 @@ def stackIkBands(dstfp, members):
         make sure -separate option is supported
         gdal.BuildVRT ... ?
         '''
+        gdal.BuildVRT(vrt, '" "'.join(members), separate=True)
+
+        if not os.path.isfile(vrt):
+            rc = 1
+        '''
         cmd = 'gdalbuildvrt -separate "{}" "{}"'.format(vrt, '" "'.join(members))
 
         (err, so, se) = taskhandler.exec_cmd(cmd)
         if err == 1:
             rc = 1
+        '''
 
-        # TODO
         '''
         gdal.Translate(dstName, src)
         '''
-        gdal.Translate({0}, {1}, dstSRS={2}, creationOptions="IC=NC {3} {4}", format="NITF").format(
-            dstfp, vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list))
+        gdal.Translate(dstfp, vrt, dstSRS=s_srs_proj4, format="NITF",
+                       creationOptions="IC=NC {0} {1}".format(" ".join(m_list), " ".join(tre_list)))
 
         '''
         cmd = 'gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
@@ -552,8 +558,11 @@ def stackIkBands(dstfp, members):
                                                                                        vrt,
                                                                                        dstfp)
         (err, so, se) = taskhandler.exec_cmd(cmd)
-        '''
+
         if err == 1:
+            rc = 1
+        '''
+        if not os.path.isfile(dstfp):
             rc = 1
 
         #print("Writing metadata to output")
@@ -709,13 +718,20 @@ def calcStats(args, info):
 
     pf = platform.platform()
     if pf.startswith("Linux"):
-        config_options = '--config GDAL_CACHEMAX 2048'
-    else:
-        config_options = ''
+        gdal.SetCacheMax(2048)
+        # config_options = '--config GDAL_CACHEMAX 2048'
+    # else:
+        # config_options = ''
 
     # TODO
     '''
     gdal.Translate() - and produce stats
+    '''
+    gdal.Translate(info.localdst, info.vrtfile, stats=True, outputType=args.outtype, outputSRS=args.spatial_ref.proj4,
+                   creationOptions=co, bandList=info.rgb_bands, format=args.format)
+
+    if not os.path.isfile(info.localdst):
+        rc = 1
     '''
     base_cmd = 'gdal_translate -stats'
 
@@ -734,20 +750,25 @@ def calcStats(args, info):
     (err, so, se) = taskhandler.exec_cmd(cmd)
     if err == 1:
         rc = 1
+    '''
 
     #### Calculate Pyramids
     if not args.no_pyramids:
         if args.format in ["GTiff"]:
             if os.path.isfile(info.localdst):
-                # TODO
-                '''
-                gdaladdoFile
-                https://stackoverflow.com/questions/33158526/how-to-correctly-use-gdaladdo-in-a-python-program
+                local_img = gdal.Open(info.localdst)
+                local_img.BuildOverviews(resampling=args.pyramid_type, overviewlist=[2, 4, 8, 16])
+                local_img = None
+
+                if not os.path.isfile(info.localdst):
+                    rc = 1
+
                 '''
                 cmd = ('gdaladdo -r {} "{}" 2 4 8 16'.format(args.pyramid_type, info.localdst))
                 (err, so, se) = taskhandler.exec_cmd(cmd)
                 if err == 1:
                     rc = 1
+                '''
 
     #### Write .prj File
     if os.path.isfile(info.localdst):
@@ -932,11 +953,14 @@ def GetImageStats(args, info, target_extent_geom=None):
                 if info.bands == 1:
                     pass
                 elif info.bands == 3:
-                    info.rgb_bands = "-b 3 -b 2 -b 1 "
+                    info.bands = [3, 2, 1]
+                    #info.rgb_bands = "-b 3 -b 2 -b 1 "
                 elif info.bands == 4:
-                    info.rgb_bands = "-b 3 -b 2 -b 1 "
+                    info.bands = [3, 2, 1]
+                    #info.rgb_bands = "-b 3 -b 2 -b 1 "
                 elif info.bands == 8:
-                    info.rgb_bands = "-b 5 -b 3 -b 2 "
+                    info.rgb_bands = [5, 3, 2]
+                    #info.rgb_bands = "-b 5 -b 3 -b 2 "
                 else:
                     logger.error("Cannot get rgb bands from a %i band image", info.bands)
                     rc = 1
@@ -947,7 +971,8 @@ def GetImageStats(args, info, target_extent_geom=None):
                 elif info.bands == 4:
                     pass
                 elif info.bands == 8:
-                    info.rgb_bands = "-b 2 -b 3 -b 5 -b 7 "
+                    info.rgb_bands = [2, 3, 5, 7]
+                    #info.rgb_bands = "-b 2 -b 3 -b 5 -b 7 "
                 else:
                     logger.error("Cannot get bgrn bands from a %i band image", info.bands)
                     rc = 1
@@ -1224,10 +1249,14 @@ def WarpImage(args, info):
     rc = 0
 
     pf = platform.platform()
+    # TODO
     if pf.startswith("Linux"):
-        config_options = '-wm 2000 --config GDAL_CACHEMAX 2048 --config GDAL_NUM_THREADS 1'
-    else:
-        config_options = '--config GDAL_NUM_THREADS 1'
+        gdal.SetCacheMax(2048)
+        gdal.Set
+        # config_options = '-wm 2000 --config GDAL_CACHEMAX 2048 --config GDAL_NUM_THREADS 1'
+    # else:
+        # config_options = '--config GDAL_NUM_THREADS 1'
+    gdal.SetConfigOption("GDAL_NUM_THREADS", "1")
 
     if not os.path.isfile(info.warpfile):
 
@@ -1264,9 +1293,16 @@ def WarpImage(args, info):
         '''
         gdal.Translate()
         '''
+        gdal.Translate(info.rawvrt, info.localsrc, format="VRT")
+
+        '''
         cmd = 'gdal_translate -of VRT "{0}" "{1}"'.format(info.localsrc, info.rawvrt)
         (err, so, se) = taskhandler.exec_cmd(cmd)
         if err == 1:
+            rc = 1
+        '''
+        # set error of output is not produced
+        if not os.path.isfile(info.rawvrt):
             rc = 1
 
         if os.path.isfile(info.rawvrt) and info.bands > 3:
@@ -1297,6 +1333,7 @@ def WarpImage(args, info):
 
 
                 #### GDALWARP Command
+                # TODO
                 cmd = 'gdalwarp {} -srcnodata "{}" -of GTiff -ot UInt16 {}{}{}-co "TILED=YES" -co "BIGTIFF=IF_SAFER" ' \
                       '-t_srs "{}" -r {} -et 0.01 -rpc -to "{}" "{}" "{}"'.format(
                     config_options,
@@ -1318,6 +1355,7 @@ def WarpImage(args, info):
 
         else:
             #### GDALWARP Command
+            # TODO
             cmd = 'gdalwarp {} -srcnodata "{}" -of GTiff -ot UInt16 {}-co "TILED=YES" -co "BIGTIFF=IF_SAFER" -t_srs ' \
                   '"{}" -r {} "{}" "{}"'.format(
                 config_options,
