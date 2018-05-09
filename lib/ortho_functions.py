@@ -650,20 +650,36 @@ def calcStats(args, info):
                     LUT = ",".join(lLUT)
 
                 elif info.stretch == "ni":
-                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
-                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                    iLUT = [0.05, 0.2, 0.4, 0.6, 1.0]
+                    oLUT = [0, 0.45, 0.65, 0.85, 1.0]
+                    '''
+                    # old2 - very slightly darker than old
                     iLUT = [0, 0.25, 0.48, 0.7, 1.0]
                     oLUT = [0, 0.5, 0.7, 0.9, 1.2]
+                    
+                    # old - looks nice, still a bit dark
+                    iLUT = [0, 0.22, 0.44, 0.66, 1.0]
+                    oLUT = [0, 0.5, 0.7, 0.9, 1.1]
+                    '''
+
                     #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
                     lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                range(len(iLUT)))
                     LUT = ",".join(lLUT)
 
                 elif info.stretch == "ni2":
-                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
-                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                    iLUT = [0, 0.225, 0.35, 0.55, 0.665, 1]
+                    oLUT = [0, 0.375, 0.425, 0.625, 0.875, 1]
+                    '''
+                    # old2 - slightly ligher than old, but still dark
                     iLUT = [0, 0.25, 0.5, 0.75, 1.0]
                     oLUT = [0, 0.35, 0.55, 0.75, 1.05]
+                    
+                    # old - very dark
+                    iLUT = [0, 0.25, 0.55, 0.75, 1.0]
+                    oLUT = [0, 0.3, 0.5, 0.7, 1.0]
+                    '''
+
                     #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
                     lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                range(len(iLUT)))
