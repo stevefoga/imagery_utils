@@ -931,8 +931,9 @@ def GetImageStats(args, info, target_extent_geom=None):
                 else:
                     info.centerlong = '--config CENTER_LONG 180 '
     
-            info.extent = "-te {0:.12f} {1:.12f} {2:.12f} {3:.12f} ".format(minx, miny, maxx, maxy)
-    
+            #info.extent = "-te {0:.12f} {1:.12f} {2:.12f} {3:.12f} ".format(minx, miny, maxx, maxy)
+            info.extent = [minx, miny, maxx, maxy]
+
             rasterxsize_m = abs(math.sqrt((ul_geom.GetX() - ur_geom.GetX())**2 + (ul_geom.GetY() - ur_geom.GetY())**2))
             rasterysize_m = abs(math.sqrt((ul_geom.GetX() - ll_geom.GetX())**2 + (ul_geom.GetY() - ll_geom.GetY())**2))
     
@@ -1252,9 +1253,10 @@ def WarpImage(args, info):
     # TODO
     if pf.startswith("Linux"):
         gdal.SetCacheMax(2048)
-        gdal.Set
+        wm_limit = 2000
         # config_options = '-wm 2000 --config GDAL_CACHEMAX 2048 --config GDAL_NUM_THREADS 1'
     # else:
+        wm_limit = None
         # config_options = '--config GDAL_NUM_THREADS 1'
     gdal.SetConfigOption("GDAL_NUM_THREADS", "1")
 
@@ -1334,6 +1336,10 @@ def WarpImage(args, info):
 
                 #### GDALWARP Command
                 # TODO
+                gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
+                          outputType=gdal.GDT_UInt16, xRes=info.res, yRes=info.res, outputBounds=info.extent,
+                          dstSRS=args.spatial_ref.proj4, # TODO: finish this command!
+                          options="{}".format(info.centerlong))
                 cmd = 'gdalwarp {} -srcnodata "{}" -of GTiff -ot UInt16 {}{}{}-co "TILED=YES" -co "BIGTIFF=IF_SAFER" ' \
                       '-t_srs "{}" -r {} -et 0.01 -rpc -to "{}" "{}" "{}"'.format(
                     config_options,
