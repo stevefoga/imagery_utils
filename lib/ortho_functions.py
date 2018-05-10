@@ -650,9 +650,14 @@ def calcStats(args, info):
                     LUT = ",".join(lLUT)
 
                 elif info.stretch == "ni":
+                    iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
+                    oLUT = [0, 0.2, 0.4, 0.6, 1.0]
+
+                    '''
+                    # old3 - less gray, slightly brighter than old2 (looks nicer)
                     iLUT = [0.05, 0.2, 0.4, 0.6, 1.0]
                     oLUT = [0, 0.45, 0.65, 0.85, 1.0]
-                    '''
+                    
                     # old2 - very slightly darker than old
                     iLUT = [0, 0.25, 0.48, 0.7, 1.0]
                     oLUT = [0, 0.5, 0.7, 0.9, 1.2]
@@ -668,9 +673,14 @@ def calcStats(args, info):
                     LUT = ",".join(lLUT)
 
                 elif info.stretch == "ni2":
+                    iLUT = [0.08, 0.225, 0.35, 0.55, 0.6, 1]
+                    oLUT = [0, 0.3, 0.4, 0.6, 0.8, 1]
+
+                    '''
+                    # old3 - slightly lighter than old2, but still dark
                     iLUT = [0, 0.225, 0.35, 0.55, 0.665, 1]
                     oLUT = [0, 0.375, 0.425, 0.625, 0.875, 1]
-                    '''
+                    
                     # old2 - slightly ligher than old, but still dark
                     iLUT = [0, 0.25, 0.5, 0.75, 1.0]
                     oLUT = [0, 0.35, 0.55, 0.75, 1.05]
