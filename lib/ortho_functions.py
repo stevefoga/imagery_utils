@@ -549,7 +549,7 @@ def stackIkBands(dstfp, members):
         gdal.Translate(dstName, src)
         '''
         gdal.Translate(dstfp, vrt, dstSRS=s_srs_proj4, format="NITF",
-                       creationOptions="IC=NC {0} {1}".format(" ".join(m_list), " ".join(tre_list)))
+                       creationOptions=["IC=NC", " ".join(m_list), " ".join(tre_list)])
 
         '''
         cmd = 'gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
@@ -702,19 +702,24 @@ def calcStats(args, info):
 
     if args.format == 'GTiff':
         if args.gtiff_compression == 'lzw':
-            co = '-co "PHOTOMETRIC=MINISBLACK" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=IF_SAFER" '
+            co = ["PHOTOMETRIC=MINISBLACK", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=IF_SAFER"]
+            # co = '-co "PHOTOMETRIC=MINISBLACK" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=IF_SAFER" '
         elif args.gtiff_compression == 'jpeg95':
-            co = '-co "PHOTOMETRIC=MINISBLACK" -co "TILED=YES" -co "compress=jpeg" -co "jpeg_quality=95" -co ' \
-                 '"BIGTIFF=IF_SAFER" '
+            co = ["PHOTOMETRIC=MINISBLACK", "TILED=YES", "compress=jpeg", "jpeg_quality=95", "BIGTIFF=IF_SAFER"]
+            # co = '-co "PHOTOMETRIC=MINISBLACK" -co "TILED=YES" -co "compress=jpeg" -co "jpeg_quality=95" -co ' \
+            #      '"BIGTIFF=IF_SAFER" '
 
     elif args.format == 'HFA':
-        co = '-co "COMPRESSED=YES" -co "STATISTICS=YES" '
+        co = ["COMPRESSED=YES", "STATISTICS=YES"]
+        # co = '-co "COMPRESSED=YES" -co "STATISTICS=YES" '
 
     elif args.format == 'JP2OpenJPEG':   #### add rgb constraint if openjpeg (3 bands only, also test if 16 bit possible)?
-        co = '-co "QUALITY=25" '
+        co = ["QUALITY=25"]
+        # co = '-co "QUALITY=25" '
 
     else:
-        co = ''
+        co = []
+        # co = ''
 
     pf = platform.platform()
     if pf.startswith("Linux"):
@@ -727,8 +732,11 @@ def calcStats(args, info):
     '''
     gdal.Translate() - and produce stats
     '''
-    gdal.Translate(info.localdst, info.vrtfile, stats=True, outputType=args.outtype, outputSRS=args.spatial_ref.proj4,
-                   creationOptions=co, bandList=info.rgb_bands, format=args.format)
+    # get GDAL data type code (stored as int)
+    output_datatype = getattr(gdal, "GDT_" + args.outtype)
+    # TODO: issue with output CRS, fix!!!!!
+    gdal.Translate(info.localdst, info.vrtfile, stats=True, outputType=output_datatype,
+                   outputSRS=args.spatial_ref.proj4, creationOptions=co, bandList=info.rgb_bands, format=args.format)
 
     if not os.path.isfile(info.localdst):
         rc = 1
@@ -756,8 +764,10 @@ def calcStats(args, info):
     if not args.no_pyramids:
         if args.format in ["GTiff"]:
             if os.path.isfile(info.localdst):
-                local_img = gdal.Open(info.localdst)
+                # open raster in "Update" mode (else overviews are written to .ovr file)
+                local_img = gdal.Open(info.localdst, gdal.GA_Update)
                 local_img.BuildOverviews(resampling=args.pyramid_type, overviewlist=[2, 4, 8, 16])
+
                 local_img = None
 
                 if not os.path.isfile(info.localdst):
@@ -927,9 +937,11 @@ def GetImageStats(args, info, target_extent_geom=None):
             if maxlon - minlon > 180:
     
                 if centroid.GetX() < 0:
-                    info.centerlong = '--config CENTER_LONG -180 '
+                    info.centerlong = "CENTER_LONG -180"
+                    # info.centerlong = '--config CENTER_LONG -180 '
                 else:
-                    info.centerlong = '--config CENTER_LONG 180 '
+                    info.centerlong = "CENTER_LONG 180"
+                    # info.centerlong = '--config CENTER_LONG 180 '
     
             #info.extent = "-te {0:.12f} {1:.12f} {2:.12f} {3:.12f} ".format(minx, miny, maxx, maxy)
             info.extent = [minx, miny, maxx, maxy]
@@ -948,8 +960,9 @@ def GetImageStats(args, info, target_extent_geom=None):
             logger.info("Original image size: %f x %f, res: %.12f x %.12f", rasterxsize_m, rasterysize_m, resx, resy)
     
             #### Set RGB bands
-            info.rgb_bands = ""
-    
+            info.rgb_bands = []
+            #info.rgb_bands = ""
+
             if args.rgb is True:
                 if info.bands == 1:
                     pass
@@ -1255,9 +1268,10 @@ def WarpImage(args, info):
         gdal.SetCacheMax(2048)
         wm_limit = 2000
         # config_options = '-wm 2000 --config GDAL_CACHEMAX 2048 --config GDAL_NUM_THREADS 1'
-    # else:
+    else:
         wm_limit = None
         # config_options = '--config GDAL_NUM_THREADS 1'
+
     gdal.SetConfigOption("GDAL_NUM_THREADS", "1")
 
     if not os.path.isfile(info.warpfile):
@@ -1331,15 +1345,22 @@ def WarpImage(args, info):
                     h = get_rpc_height(info)
                     logger.info("Average elevation: %f meters", h)
                     to = "RPC_HEIGHT={}".format(h)
-                    ds = None
 
 
                 #### GDALWARP Command
-                # TODO
+                # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
+                logger.debug("nodata_list: {}".format(" ".join(nodata_list)))
+                logger.debug("args.spatial_ref.proj4: {}".format(args.spatial_ref.proj4))
+
                 gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
                           outputType=gdal.GDT_UInt16, xRes=info.res, yRes=info.res, outputBounds=info.extent,
-                          dstSRS=args.spatial_ref.proj4, # TODO: finish this command!
-                          options="{}".format(info.centerlong))
+                          dstSRS=args.spatial_ref.proj4, resampleAlg=args.resample, transformerOptions=to,
+                          creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"], rpc=True, errorThreshold=0.01,
+                          warpMemoryLimit=wm_limit, options="{}".format(info.centerlong))
+
+                if not os.path.isfile(info.warpfile):
+                    rc = 1
+                '''
                 cmd = 'gdalwarp {} -srcnodata "{}" -of GTiff -ot UInt16 {}{}{}-co "TILED=YES" -co "BIGTIFF=IF_SAFER" ' \
                       '-t_srs "{}" -r {} -et 0.01 -rpc -to "{}" "{}" "{}"'.format(
                     config_options,
@@ -1358,10 +1379,19 @@ def WarpImage(args, info):
                 #print(err)
                 if err == 1:
                     rc = 1
-
+                '''
         else:
             #### GDALWARP Command
-            # TODO
+            # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
+            gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
+                      outputType=gdal.GDT_UInt16, xRes=info.res, yRes=info.res, dstSRS=args.spatial_ref.proj4,
+                      resampleAlg=args.resample, creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"],
+                      warpMemoryLimit=wm_limit)
+
+            if not os.path.isfile(info.warpfile):
+                rc = 1
+
+            '''    
             cmd = 'gdalwarp {} -srcnodata "{}" -of GTiff -ot UInt16 {}-co "TILED=YES" -co "BIGTIFF=IF_SAFER" -t_srs ' \
                   '"{}" -r {} "{}" "{}"'.format(
                 config_options,
@@ -1377,6 +1407,7 @@ def WarpImage(args, info):
             #print(err)
             if err == 1:
                 rc = 1
+            '''
 
         return rc
 
