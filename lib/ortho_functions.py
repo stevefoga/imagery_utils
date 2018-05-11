@@ -17,6 +17,11 @@ formats = {'GTiff': '.tif', 'JP2OpenJPEG': '.jp2', 'ENVI': '.envi', 'HFA': '.img
 outtypes = ['Byte', 'UInt16', 'Float32']
 stretches = ["ns", "rf", "mr", "rd"]
 resamples = ["near", "bilinear", "cubic", "cubicspline", "lanczos"]
+resample_gdal = {"near": "GRA_NearestNeighbour",
+                 "bilinear": "GRA_Bilinear",
+                 "cubic": "GRA_Cubic",
+                 "cubicspline": "GRA_CubicSpline",
+                 "lanczos": "GRA_Lanczos"}
 gtiff_compressions = ["jpeg95", "lzw"]
 exts = ['.ntf', '.tif']
 
@@ -548,6 +553,9 @@ def stackIkBands(dstfp, members):
         '''
         gdal.Translate(dstName, src)
         '''
+        logger.info("gdal.Translate({0}, {1}, dstSRS={2}, format='NITF', creationOptions=['IC=NC', {3}, {4}])"
+                    .format(dstfp, vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list)))
+
         gdal.Translate(dstfp, vrt, dstSRS=s_srs_proj4, format="NITF",
                        creationOptions=["IC=NC", " ".join(m_list), " ".join(tre_list)])
 
@@ -734,7 +742,12 @@ def calcStats(args, info):
     '''
     # get GDAL data type code (stored as int)
     output_datatype = getattr(gdal, "GDT_" + args.outtype)
+
     # TODO: issue with output CRS, fix!!!!!
+    logger.info("gdal.Translate({0}, {1}, stats=True, outputType={2}, outputSRS={3}, creationOptions={4}, "
+                "bandList={5}, format={6})".format(info.localdst, info.vrtfile, output_datatype, args.spatial_ref.proj4,
+                                                   co, info.rgb_bands, args.format))
+
     gdal.Translate(info.localdst, info.vrtfile, stats=True, outputType=output_datatype,
                    outputSRS=args.spatial_ref.proj4, creationOptions=co, bandList=info.rgb_bands, format=args.format)
 
@@ -766,6 +779,7 @@ def calcStats(args, info):
             if os.path.isfile(info.localdst):
                 # open raster in "Update" mode (else overviews are written to .ovr file)
                 local_img = gdal.Open(info.localdst, gdal.GA_Update)
+                logger.info("ds.BuildOverviews(resampling={0}, overviewlist=[2, 4, 8, 16])".format(args.pyramid_type))
                 local_img.BuildOverviews(resampling=args.pyramid_type, overviewlist=[2, 4, 8, 16])
 
                 local_img = None
@@ -954,9 +968,11 @@ def GetImageStats(args, info, target_extent_geom=None):
     
             ####  Make a string for Pixel Size Specification
             if args.resolution is not None:
-                info.res = "-tr {} {} ".format(args.resolution, args.resolution)
+                info.res = {'x': args.resolution, 'y': args.resolution}
+                # info.res = "-tr {} {} ".format(args.resolution, args.resolution)
             else:
-                info.res = "-tr {0:.12f} {1:.12f} ".format(resx, resy)
+                info.res = {'x': resx, 'y': resy}
+                # info.res = "-tr {0:.12f} {1:.12f} ".format(resx, resy)
             logger.info("Original image size: %f x %f, res: %.12f x %.12f", rasterxsize_m, rasterysize_m, resx, resy)
     
             #### Set RGB bands
@@ -1309,6 +1325,8 @@ def WarpImage(args, info):
         '''
         gdal.Translate()
         '''
+        logger.info("gdal.Translate({0}, {1}, format='VRT')".format(info.rawvrt, info.localsrc))
+
         gdal.Translate(info.rawvrt, info.localsrc, format="VRT")
 
         '''
@@ -1329,34 +1347,43 @@ def WarpImage(args, info):
 
         nodata_list = ["0"] * info.bands
 
+        # call GDAL-specific resampling method
+        output_resample = getattr(gdalconst, resample_gdal[args.resample])
+
         if not args.skip_warp:
             if rc != 1:
                 ####  Set RPC_DEM or RPC_HEIGHT transformation option
                 if args.dem is not None:
                     logger.info('DEM: %s', os.path.basename(args.dem))
-                    to = "RPC_DEM={}".format(args.dem)
+                    to = ["RPC_DEM={}".format(args.dem)]
 
                 elif args.ortho_height is not None:
                     logger.info("Elevation: %f meters", args.ortho_height)
-                    to = "RPC_HEIGHT={}".format(args.ortho_height)
+                    to = ["RPC_HEIGHT={}".format(args.ortho_height)]
 
                 else:
                     #### Get Constant Elevation From XML
                     h = get_rpc_height(info)
                     logger.info("Average elevation: %f meters", h)
-                    to = "RPC_HEIGHT={}".format(h)
-
+                    to = ["RPC_HEIGHT={}".format(h)]
 
                 #### GDALWARP Command
                 # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
-                logger.debug("nodata_list: {}".format(" ".join(nodata_list)))
-                logger.debug("args.spatial_ref.proj4: {}".format(args.spatial_ref.proj4))
+                logger.info("nodata_list: {}".format(" ".join(nodata_list)))
+                logger.info("args.spatial_ref.proj4: {}".format(args.spatial_ref.proj4))
+
+                logger.info("gdal.Warp({0}, {1}, srcNodata={2}, format='GTiff', outputType={3}, xRes={4}, yRes={5}, "
+                            "outputBounds={6}, dstSRS={7}, resampleAlg={8}, transformerOptions={9}, "
+                            "creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], rpc=True, errorThreshold=0.01, "
+                            "warpMemoryLimit={10}, options=[{11}])".format(
+                    info.warpfile, info.rawvrt, " ".join(nodata_list), gdal.GDT_UInt16, info.res['x'], info.res['y'],
+                    info.extent, args.spatial_ref.proj4, output_resample, to, wm_limit, info.centerlong))
 
                 gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
-                          outputType=gdal.GDT_UInt16, xRes=info.res, yRes=info.res, outputBounds=info.extent,
-                          dstSRS=args.spatial_ref.proj4, resampleAlg=args.resample, transformerOptions=to,
+                          outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], outputBounds=info.extent,
+                          dstSRS=args.spatial_ref.proj4, resampleAlg=output_resample, transformerOptions=to,
                           creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"], rpc=True, errorThreshold=0.01,
-                          warpMemoryLimit=wm_limit, options="{}".format(info.centerlong))
+                          warpMemoryLimit=wm_limit, options=[info.centerlong])
 
                 if not os.path.isfile(info.warpfile):
                     rc = 1
@@ -1381,11 +1408,18 @@ def WarpImage(args, info):
                     rc = 1
                 '''
         else:
+
+            logger.info("gdal.Warp({0}, {1}, srcNodata={2}, format='GTiff', outputType={3}, xRes={4}, yRes={5}, "
+                        "dstSRS={6}, resampleAlg={7}, creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], "
+                        "warpMemoryLimit={8})").format(info.warpfile, info.rawvrt, " ".join(nodata_list),
+                                                       gdal.GDT_UInt16, info.res['x'], info.res['y'],
+                                                       args.spatial_ref.proj4, output_resample, wm_limit)
+
             #### GDALWARP Command
             # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
             gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
-                      outputType=gdal.GDT_UInt16, xRes=info.res, yRes=info.res, dstSRS=args.spatial_ref.proj4,
-                      resampleAlg=args.resample, creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"],
+                      outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], dstSRS=args.spatial_ref.proj4,
+                      resampleAlg=output_resample, creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"],
                       warpMemoryLimit=wm_limit)
 
             if not os.path.isfile(info.warpfile):
