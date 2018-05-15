@@ -488,6 +488,7 @@ def stackIkBands(dstfp, members):
     dstdir, dstfn = os.path.split(dstfp)
     vrt = os.path.splitext(dstfp)[0] + "_merge.vrt"
 
+    # TODO: test IK01 stacking!
     #### Gather metadata from original blue image and save as strings for merge command
     logger.info("Stacking IKONOS MSI bands")
     src_ds = gdal.Open(srcfp, gdalconst.GA_ReadOnly)
@@ -538,6 +539,8 @@ def stackIkBands(dstfp, members):
         make sure -separate option is supported
         gdal.BuildVRT ... ?
         '''
+        logger.info("gdal.BuildVRT(%s, %s, separate=True)", vrt, '" "'.join(members))
+
         gdal.BuildVRT(vrt, '" "'.join(members), separate=True)
 
         if not os.path.isfile(vrt):
@@ -552,14 +555,21 @@ def stackIkBands(dstfp, members):
 
         '''
         gdal.Translate(dstName, src)
-        '''
-        logger.info("gdal.Translate({0}, {1}, dstSRS={2}, format='NITF', creationOptions=['IC=NC', {3}, {4}])"
-                    .format(dstfp, vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list)))
+        
+        
+        logger.info("gdal.Translate(%s, %s, outputSRS=%s, format='NITF', creationOptions=['IC=NC', %s, %s])", dstfp,
+                    vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list))
 
-        gdal.Translate(dstfp, vrt, dstSRS=s_srs_proj4, format="NITF",
+        gdal.Translate(dstfp, vrt, outputSRS=s_srs_proj4, format="NITF",
                        creationOptions=["IC=NC", " ".join(m_list), " ".join(tre_list)])
 
         '''
+        logger.info('gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
+                                                                                       " ".join(m_list),
+                                                                                       " ".join(tre_list),
+                                                                                       vrt,
+                                                                                       dstfp))
+
         cmd = 'gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
                                                                                        " ".join(m_list),
                                                                                        " ".join(tre_list),
@@ -569,7 +579,7 @@ def stackIkBands(dstfp, members):
 
         if err == 1:
             rc = 1
-        '''
+
         if not os.path.isfile(dstfp):
             rc = 1
 
@@ -661,28 +671,30 @@ def calcStats(args, info):
         if vds is not None:
 
             for band in range(1, vds.RasterCount + 1):
-                calfact, offset = CFlist[band - 1]
-
                 if info.stretch == "ns":
                     LUT = "0:0,{}:{}".format(imax, omax)
-                elif info.stretch == "rf":
-                    #LUT = "0:0,{}:{}".format(imax, omax*imax*CFlist[band-1])
-                    LUT = "0:{},{}:{}".format(offset, imax, imax * calfact * omax + offset)
-                elif info.stretch == "rd":
-                    #LUT = "0:0,{}:{}".format(imax, imax*CFlist[band-1])
-                    LUT = "0:{},{}:{}".format(offset, imax, imax * calfact + offset)
-                elif info.stretch == "mr":
-                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
-                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
-                    iLUT = [0, 0.125, 0.25, 0.375, 1.0]
-                    oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
-                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
-                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
-                               range(len(iLUT)))
-                    LUT = ",".join(lLUT)
+                else:
+                    calfact, offset = CFlist[band - 1]
+                    if info.stretch == "rf":
+                        # LUT = "0:0,%f:%f" %(imax,omax*imax*CFlist[band-1])
+                        LUT = "0:{},{}:{}".format(offset, imax, imax * calfact * omax + offset)
+                    elif info.stretch == "rd":
+                        # LUT = "0:0,%f:%f" %(imax,imax*CFlist[band-1])
+                        LUT = "0:{},{}:{}".format(offset, imax, imax * calfact + offset)
+                    elif info.stretch == "mr":
+                        # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
+                        # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                        iLUT = [0, 0.125, 0.25, 0.375, 1.0]
+                        oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
+                        # lLUT = map(lambda x: "%f:%f"%(iLUT[x]/CFlist[band-1],oLUT[x]*omax), range(len(iLUT)))
+                        lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                                   range(len(iLUT)))
+                        LUT = ",".join(lLUT)
 
                 if info.stretch != "ns":
-                    logger.debug("Band Calibration Factors: %i %i %i", band, CFlist[band - 1][0], CFlist[band - 1][1])
+                    logger.debug("Band Calibration Factors: {} {} {}".format(band,
+                                                                             CFlist[band - 1][0],
+                                                                             CFlist[band - 1][1]))
                 logger.debug("Band stretch parameters: %i %s", band, LUT)
 
                 ComplexSourceXML = ('<ComplexSource>'
@@ -736,17 +748,12 @@ def calcStats(args, info):
     # else:
         # config_options = ''
 
-    # TODO
-    '''
-    gdal.Translate() - and produce stats
-    '''
     # get GDAL data type code (stored as int)
     output_datatype = getattr(gdal, "GDT_" + args.outtype)
 
-    # TODO: issue with output CRS, fix!!!!!
-    logger.info("gdal.Translate({0}, {1}, stats=True, outputType={2}, outputSRS={3}, creationOptions={4}, "
-                "bandList={5}, format={6})".format(info.localdst, info.vrtfile, output_datatype, args.spatial_ref.proj4,
-                                                   co, info.rgb_bands, args.format))
+    logger.info("gdal.Translate(%s, %s, stats=True, outputType=%i, outputSRS=%s, creationOptions=%s, "
+                "bandList=%s, format=%s)", info.localdst, info.vrtfile, output_datatype, args.spatial_ref.proj4, co,
+                info.rgb_bands, args.format)
 
     gdal.Translate(info.localdst, info.vrtfile, stats=True, outputType=output_datatype,
                    outputSRS=args.spatial_ref.proj4, creationOptions=co, bandList=info.rgb_bands, format=args.format)
@@ -777,9 +784,9 @@ def calcStats(args, info):
     if not args.no_pyramids:
         if args.format in ["GTiff"]:
             if os.path.isfile(info.localdst):
-                # open raster in "Update" mode (else overviews are written to .ovr file)
+                # open raster in "Update" mode (else overviews are written to external .ovr file)
                 local_img = gdal.Open(info.localdst, gdal.GA_Update)
-                logger.info("ds.BuildOverviews(resampling={0}, overviewlist=[2, 4, 8, 16])".format(args.pyramid_type))
+                logger.info("ds.BuildOverviews(resampling=%s, overviewlist=[2, 4, 8, 16])", args.pyramid_type)
                 local_img.BuildOverviews(resampling=args.pyramid_type, overviewlist=[2, 4, 8, 16])
 
                 local_img = None
@@ -1279,14 +1286,12 @@ def WarpImage(args, info):
     rc = 0
 
     pf = platform.platform()
-    # TODO
     if pf.startswith("Linux"):
         gdal.SetCacheMax(2048)
         wm_limit = 2000
-        # config_options = '-wm 2000 --config GDAL_CACHEMAX 2048 --config GDAL_NUM_THREADS 1'
+
     else:
         wm_limit = None
-        # config_options = '--config GDAL_NUM_THREADS 1'
 
     gdal.SetConfigOption("GDAL_NUM_THREADS", "1")
 
@@ -1321,11 +1326,7 @@ def WarpImage(args, info):
                         rc = 1
 
         #### convert to VRT and modify 4th band
-        # TODO
-        '''
-        gdal.Translate()
-        '''
-        logger.info("gdal.Translate({0}, {1}, format='VRT')".format(info.rawvrt, info.localsrc))
+        logger.info("gdal.Translate(%s, %s, format='VRT')", info.rawvrt, info.localsrc)
 
         gdal.Translate(info.rawvrt, info.localsrc, format="VRT")
 
@@ -1368,16 +1369,15 @@ def WarpImage(args, info):
                     to = ["RPC_HEIGHT={}".format(h)]
 
                 #### GDALWARP Command
-                # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
-                logger.info("nodata_list: {}".format(" ".join(nodata_list)))
-                logger.info("args.spatial_ref.proj4: {}".format(args.spatial_ref.proj4))
 
-                logger.info("gdal.Warp({0}, {1}, srcNodata={2}, format='GTiff', outputType={3}, xRes={4}, yRes={5}, "
-                            "outputBounds={6}, dstSRS={7}, resampleAlg={8}, transformerOptions={9}, "
+                ## TODO: figure out how to halt command upon keyboard interrupt
+
+                logger.info("gdal.Warp(%s, %s, srcNodata=%s, format='GTiff', outputType=%i, xRes=%f, yRes=%f, "
+                            "outputBounds=%f, dstSRS=%s, resampleAlg=%s, transformerOptions=%s, "
                             "creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], rpc=True, errorThreshold=0.01, "
-                            "warpMemoryLimit={10}, options=[{11}])".format(
-                    info.warpfile, info.rawvrt, " ".join(nodata_list), gdal.GDT_UInt16, info.res['x'], info.res['y'],
-                    info.extent, args.spatial_ref.proj4, output_resample, to, wm_limit, info.centerlong))
+                            "warpMemoryLimit=%i, options=[%s])", info.warpfile, info.rawvrt, " ".join(nodata_list),
+                            gdal.GDT_UInt16, info.res['x'], info.res['y'], info.extent, args.spatial_ref.proj4,
+                            output_resample, to, wm_limit, info.centerlong)
 
                 gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
                           outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], outputBounds=info.extent,
@@ -1409,14 +1409,13 @@ def WarpImage(args, info):
                 '''
         else:
 
-            logger.info("gdal.Warp({0}, {1}, srcNodata={2}, format='GTiff', outputType={3}, xRes={4}, yRes={5}, "
-                        "dstSRS={6}, resampleAlg={7}, creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], "
-                        "warpMemoryLimit={8})").format(info.warpfile, info.rawvrt, " ".join(nodata_list),
-                                                       gdal.GDT_UInt16, info.res['x'], info.res['y'],
-                                                       args.spatial_ref.proj4, output_resample, wm_limit)
+            logger.info("gdal.Warp(%s, %s, srcNodata=%s, format='GTiff', outputType=%i, xRes=%f, yRes=%f, "
+                        "dstSRS=%s, resampleAlg=%s, creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], "
+                        "warpMemoryLimit=%i)", info.warpfile, info.rawvrt, " ".join(nodata_list), gdal.GDT_UInt16,
+                        info.res['x'], info.res['y'], args.spatial_ref.proj4, output_resample, wm_limit)
 
             #### GDALWARP Command
-            # TODO - fix warp -- images are coming out in decimal degrees, but should be in native projection!!
+            # TODO: test me! (call args.skip_warp)
             gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
                       outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], dstSRS=args.spatial_ref.proj4,
                       resampleAlg=output_resample, creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"],
