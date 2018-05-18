@@ -449,7 +449,8 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
         py_ext = ''
     else:
         py_ext = '.py'
-    
+
+    # TODO: convert to 'gdal_pansharpen.py' (GDAL >= 2.1)
     logger.info("Pansharpening multispectral image")
     if os.path.isfile(pan_local_dstfp) and os.path.isfile(mul_local_dstfp):
         if not os.path.isfile(pansh_local_dstfp):
@@ -460,6 +461,7 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
         print("Pan or Multi warped image does not exist\n\t{}\n\t{}").format(pan_local_dstfp, mul_local_dstfp)
 
     #### Make pyramids
+    # TODO: convert to 'ds.BuildOverviews()' (GDAL >= 2.x)
     if os.path.isfile(pansh_local_dstfp):
         cmd = 'gdaladdo -r {} "{}" 2 4 8 16'.format(args.pyramid_type, pansh_local_dstfp)
         taskhandler.exec_cmd(cmd)
