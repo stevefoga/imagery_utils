@@ -539,9 +539,9 @@ def stackIkBands(dstfp, members):
         make sure -separate option is supported
         gdal.BuildVRT ... ?
         '''
-        logger.info("gdal.BuildVRT(%s, %s, separate=True)", vrt, '" "'.join(members))
+        logger.info("gdal.BuildVRT(%s, %s, separate=True)", vrt, members)
 
-        gdal.BuildVRT(vrt, '" "'.join(members), separate=True)
+        gdal.BuildVRT(vrt, members, separate=True)
 
         if not os.path.isfile(vrt):
             rc = 1
@@ -555,8 +555,9 @@ def stackIkBands(dstfp, members):
 
         '''
         gdal.Translate(dstName, src)
-        
-        
+        '''
+
+
         logger.info("gdal.Translate(%s, %s, outputSRS=%s, format='NITF', creationOptions=['IC=NC', %s, %s])", dstfp,
                     vrt, s_srs_proj4, " ".join(m_list), " ".join(tre_list))
 
@@ -564,6 +565,15 @@ def stackIkBands(dstfp, members):
                        creationOptions=["IC=NC", " ".join(m_list), " ".join(tre_list)])
 
         '''
+        # test code, without metadata
+        logger.info("gdal.Translate(%s, %s, outputSRS=%s, format='NITF', creationOptions=['IC=NC'])", dstfp,
+                    vrt, s_srs_proj4)
+
+        gdal.Translate(dstfp, vrt, outputSRS=s_srs_proj4, format="NITF",
+                       creationOptions=["IC=NC"])
+        
+
+
         logger.info('gdal_translate -a_srs "{}" -of NITF -co "IC=NC" {} {} "{}" "{}"'.format(s_srs_proj4,
                                                                                        " ".join(m_list),
                                                                                        " ".join(tre_list),
@@ -579,7 +589,7 @@ def stackIkBands(dstfp, members):
 
         if err == 1:
             rc = 1
-
+        '''
         if not os.path.isfile(dstfp):
             rc = 1
 
@@ -617,10 +627,14 @@ def stackIkBands(dstfp, members):
 
     else:
         rc = 1
+
+    # TODO: uncomment when testing is complete
+    '''
     try:
         os.remove(vrt)
     except Exception as e:
         logger.warning("Cannot remove file: %s, %s", vrt, e)
+    '''
     return rc
 
 
@@ -1326,6 +1340,7 @@ def WarpImage(args, info):
                         rc = 1
 
         #### convert to VRT and modify 4th band
+        # TODO: this comes out different when run in new code for RGB IK01 (missing STDIDC, PIAIMC, USE00A)
         logger.info("gdal.Translate(%s, %s, format='VRT')", info.rawvrt, info.localsrc)
 
         gdal.Translate(info.rawvrt, info.localsrc, format="VRT")
@@ -1346,7 +1361,8 @@ def WarpImage(args, info):
                 vds.GetRasterBand(4).SetColorInterpretation(gdalconst.GCI_Undefined)
             vds = None
 
-        nodata_list = ["0"] * info.bands
+        logger.info("info.bands: {}".format(info.bands))
+        nodata_list = ["0"] * len(info.bands)
 
         # call GDAL-specific resampling method
         output_resample = getattr(gdalconst, resample_gdal[args.resample])
@@ -1371,15 +1387,19 @@ def WarpImage(args, info):
                 #### GDALWARP Command
 
                 ## TODO: figure out how to halt command upon keyboard interrupt
+                logger.info("info.res['x']: {}".format(info.res['x']))
+                logger.info("info.res['y']: {}".format(info.res['y']))
+                logger.info("info.extent: {}".format(info.extent))
+                logger.info("args.spatial_ref.proj4: {}".format(args.spatial_ref.proj4))
 
                 logger.info("gdal.Warp(%s, %s, srcNodata=%s, format='GTiff', outputType=%i, xRes=%f, yRes=%f, "
-                            "outputBounds=%f, dstSRS=%s, resampleAlg=%s, transformerOptions=%s, "
+                            "outputBounds=%s, dstSRS=%s, resampleAlg=%i, transformerOptions=%s, "
                             "creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], rpc=True, errorThreshold=0.01, "
-                            "warpMemoryLimit=%i, options=[%s])", info.warpfile, info.rawvrt, " ".join(nodata_list),
+                            "warpMemoryLimit=%s, options=[%s])", info.warpfile, info.rawvrt, nodata_list,
                             gdal.GDT_UInt16, info.res['x'], info.res['y'], info.extent, args.spatial_ref.proj4,
-                            output_resample, to, wm_limit, info.centerlong)
+                            output_resample, to, str(wm_limit), info.centerlong)
 
-                gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
+                gdal.Warp(info.warpfile, info.rawvrt, srcNodata=nodata_list, format="GTiff",
                           outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], outputBounds=info.extent,
                           dstSRS=args.spatial_ref.proj4, resampleAlg=output_resample, transformerOptions=to,
                           creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"], rpc=True, errorThreshold=0.01,
@@ -1411,12 +1431,12 @@ def WarpImage(args, info):
 
             logger.info("gdal.Warp(%s, %s, srcNodata=%s, format='GTiff', outputType=%i, xRes=%f, yRes=%f, "
                         "dstSRS=%s, resampleAlg=%s, creationOptions=['TILED=YES', 'BIGTIFF=IF_SAFER'], "
-                        "warpMemoryLimit=%i)", info.warpfile, info.rawvrt, " ".join(nodata_list), gdal.GDT_UInt16,
+                        "warpMemoryLimit=%i)", info.warpfile, info.rawvrt, nodata_list, gdal.GDT_UInt16,
                         info.res['x'], info.res['y'], args.spatial_ref.proj4, output_resample, wm_limit)
 
             #### GDALWARP Command
             # TODO: test me! (call args.skip_warp)
-            gdal.Warp(info.warpfile, info.rawvrt, srcNodata=" ".join(nodata_list), format="GTiff",
+            gdal.Warp(info.warpfile, info.rawvrt, srcNodata=nodata_list, format="GTiff",
                       outputType=gdal.GDT_UInt16, xRes=info.res['x'], yRes=info.res['y'], dstSRS=args.spatial_ref.proj4,
                       resampleAlg=output_resample, creationOptions=["TILED=YES", "BIGTIFF=IF_SAFER"],
                       warpMemoryLimit=wm_limit)
