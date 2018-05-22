@@ -1362,7 +1362,7 @@ def WarpImage(args, info):
             vds = None
 
         logger.info("info.bands: {}".format(info.bands))
-        nodata_list = ["0"] * len(info.bands)
+        nodata_list = ["0"] * info.bands
 
         # call GDAL-specific resampling method
         output_resample = getattr(gdalconst, resample_gdal[args.resample])
