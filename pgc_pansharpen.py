@@ -403,6 +403,7 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
     print("Multispectral image: {}".format(image_pair.mul_srcfp))
     print("Panchromatic image: {}".format(image_pair.pan_srcfp))
 
+    # TODO: remove this logic (not used elsewhere; already handled in ortho_functions.process_image() )
     if args.dem is not None:
         dem_arg = '-d "{}" '.format(args.dem)
     else:
@@ -415,7 +416,7 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
     mul_local_dstfp = os.path.join(wd, "{}_{}{}{}.tif".format(mul_basename, bittype, args.stretch, args.epsg))
     pan_dstfp = os.path.join(dstdir, "{}_{}{}{}.tif".format(pan_basename, bittype, args.stretch, args.epsg))
     mul_dstfp = os.path.join(dstdir, "{}_{}{}{}.tif".format(mul_basename, bittype, args.stretch, args.epsg))
-    pansh_tempfp = os.path.join(wd, "{}_{}{}{}_pansh_temp.tif".format(mul_basename, bittype, args.stretch, args.epsg))
+    pansh_tempfp = os.path.join(wd, "{}_{}{}{}_pansh_temp.tif".format(mul_basename, bittype, args.stretch, args.epsg)) # TODO: remove?
     pansh_local_dstfp = os.path.join(wd, "{}_{}{}{}_pansh.tif".format(mul_basename, bittype, args.stretch, args.epsg))
     pansh_xmlfp = os.path.join(dstdir, "{}_{}{}{}_pansh.xml".format(mul_basename, bittype, args.stretch, args.epsg))
     mul_xmlfp = os.path.join(dstdir, "{}_{}{}{}.xml".format(mul_basename, bittype, args.stretch, args.epsg))
@@ -450,7 +451,6 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
     else:
         py_ext = '.py'
 
-    # TODO: convert to 'gdal_pansharpen.py' (GDAL >= 2.1)
     logger.info("Pansharpening multispectral image")
     if os.path.isfile(pan_local_dstfp) and os.path.isfile(mul_local_dstfp):
         if not os.path.isfile(pansh_local_dstfp):
@@ -461,11 +461,17 @@ def exec_pansharpen(image_pair, pansh_dstfp, args):
         print("Pan or Multi warped image does not exist\n\t{}\n\t{}").format(pan_local_dstfp, mul_local_dstfp)
 
     #### Make pyramids
-    # TODO: convert to 'ds.BuildOverviews()' (GDAL >= 2.x)
+    # TODO: test overview building command
     if os.path.isfile(pansh_local_dstfp):
+        '''
         cmd = 'gdaladdo -r {} "{}" 2 4 8 16'.format(args.pyramid_type, pansh_local_dstfp)
         taskhandler.exec_cmd(cmd)
-       
+        '''
+        # open raster in "Update" mode (else overviews are written to external .ovr file)
+        local_img = gdal.Open(pansh_local_dstfp, gdal.GA_Update)
+        logger.info("ds.BuildOverviews(resampling=%s, overviewlist=[2, 4, 8, 16])", args.pyramid_type)
+        local_img.BuildOverviews(resampling=args.pyramid_type, overviewlist=[2, 4, 8, 16])
+
     ## Copy warped multispectral xml to pansharpened output
     shutil.copy2(mul_xmlfp, pansh_xmlfp)
 
