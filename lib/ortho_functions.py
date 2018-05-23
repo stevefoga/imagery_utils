@@ -263,11 +263,13 @@ def buildParentArgumentParser():
                         help="skip warping step")
     parser.add_argument("--skip-dem-overlap-check", action='store_true', default=False,
                         help="skip verification of image-DEM overlap")
-    parser.add_argument("--no-pyramids", action='store_true', default=False, help='suppress calculation of output '
-                                                                                  'image pyramids')
+    parser.add_argument("--no-pyramids", action='store_true', default=False,
+                        help='suppress calculation of output image pyramids')
     parser.add_argument("--pyramid-type", choices=['near', 'cubic'], default='near', help='pyramid resampling strategy')
-    parser.add_argument("--ortho-height", type=int, help='constant elevation to use for orthorectification (value '
-                                                         'should be in meters above the wgs84 ellipoid)')
+    parser.add_argument("--ortho-height", type=int,
+                        help='constant elevation to use for orthorectification (value should be in meters above '
+                        'the wgs84 ellipoid)')
+    parser.add_argument("--version", action='version', version="imagery_utils v{}".format(utils.package_version))
 
     return parser, pos_arg_keys
 
@@ -627,30 +629,28 @@ def calcStats(args, info):
         if vds is not None:
 
             for band in range(1, vds.RasterCount + 1):
-
-
-                # TODO: add stretches here!
-
                 if info.stretch == "ns":
                     LUT = "0:0,{}:{}".format(imax, omax)
                 else:
                     calfact, offset = CFlist[band - 1]
-
                     if info.stretch == "rf":
-                        #LUT = "0:0,{}:{}".format(imax, omax*imax*CFlist[band-1])
-                        LUT = "0:{},{}:{}".format(offset, imax, imax * calfact * omax + offset)
+                        # LUT = "0:0,%f:%f" %(imax,omax*imax*CFlist[band-1])
+                        LUT = "0:{},{}:{}".format(offset * omax, imax, (imax * calfact + offset) * omax)
                     elif info.stretch == "rd":
-                        #LUT = "0:0,{}:{}".format(imax, imax*CFlist[band-1])
+                        # LUT = "0:0,%f:%f" %(imax,imax*CFlist[band-1])
                         LUT = "0:{},{}:{}".format(offset, imax, imax * calfact + offset)
                     elif info.stretch == "mr":
-                        # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
-                        # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
-                        iLUT = [0, 0.125, 0.25, 0.375, 1.0]
-                        oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
-                        #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
-                        lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
-                                   range(len(iLUT)))
-                        LUT = ",".join(lLUT)
+                        iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
+                        oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                        # iLUT = [0, 0.125, 0.25, 0.375, 1.0]
+                        # oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
+                        lLUT = map(lambda x: "{}:{}".format(
+                            iLUT[x] * imax,
+                            (iLUT[x] * imax * calfact + offset) * omax * oLUT[x] / iLUT[x]
+                        ), range(1, len(iLUT)))
+                        lLUT2 = ["0:0"]
+                        lLUT3 = lLUT2 + lLUT
+                        LUT = ",".join(lLUT2 + lLUT)
 
                     elif info.stretch == "ni":
                         iLUT = [0.04, 0.18, 0.38, 0.58, 1.0]
@@ -721,8 +721,6 @@ def calcStats(args, info):
                         lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
                                    range(len(iLUT)))
                         LUT = ",".join(lLUT)
-
-
 
                 if info.stretch != "ns":
                     logger.debug("Band Calibration Factors: %i %i %i", band, CFlist[band - 1][0], CFlist[band - 1][1])
@@ -1214,6 +1212,7 @@ def WriteOutputMetadata(args, info):
 
     ####  Determine custom MD
     dMD = {}
+    dMD["VERSION"] = "imagery_utils v{}".format(utils.package_version)
     tm = datetime.today()
     dMD["PROCESS_DATE"] = tm.strftime("%d-%b-%Y %H:%M:%S")
     if not args.skip_warp:
@@ -1652,9 +1651,10 @@ def getDGXmlData(xmlpath, stretch):
 
                 logger.info("%s: \n\tabsCalFactor %f\n\teffectiveBandwidth %f\n\tEarth-Sun distance %f"
                             "\n\tEsun %f\n\tSun angle %f\n\tSun elev %f\n\tGain %f\n\tBias %f"
-                            "\n\tUnits factor %f\n\tReflectance correction %f\n\tRadiance correction %f", satband,
-                            abscal, effbandw, des, Esun, sunAngle, sunEl, gain, bias, units_factor, refl_fact,
-                            rad_fact)
+                            "\n\tUnits factor %f\n\tReflectance correction %f\n\tReflectance offset %f"
+                            "\n\tRadiance correction %f\n\tRadiance offset %f", satband,abscal, effbandw,
+                            des, Esun, sunAngle, sunEl, gain, bias, units_factor, refl_fact, refl_offset,
+                            rad_fact, bias)
 
                 if stretch == "rd":
                     calibDict[band] = (rad_fact, bias)
