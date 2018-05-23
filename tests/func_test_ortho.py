@@ -33,6 +33,7 @@ class TestOrthoFunc(unittest.TestCase):
         if not os.path.isdir(self.dstdir):
             os.makedirs(self.dstdir)
 
+
     ##@unittest.skip("skipping")
     def test_image_types(self):
         """
