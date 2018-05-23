@@ -657,6 +657,10 @@ def calcStats(args, info):
                         oLUT = [0, 0.45, 0.68, 0.81, 1.0]
 
                         '''
+                        # old6 - lighter, better looking than old5 (darker than old3)
+                        iLUT = [0.04, 0.18, 0.38, 0.58, 1.0]
+                        oLUT = [0, 0.45, 0.68, 0.81, 1.0]
+                        
                         # old5 - darker than ni2's old5, but better than old4 (still washed out)
                         iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
                         oLUT = [0, 0.4, 0.6, 0.8, 1.0]
@@ -688,6 +692,10 @@ def calcStats(args, info):
                         oLUT = [0, 0.35, 0.48, 0.75, 1]
 
                         '''
+                        # old6 - lighter, better than old5 (darker than old3)
+                        iLUT = [0.03, 0.225, 0.45, 0.6, 1]
+                        oLUT = [0, 0.35, 0.48, 0.75, 1]
+                        
                         # old5 - lighter than ni's old5 (and less washed out), better than old4
                         iLUT = [0.06, 0.225, 0.35, 0.6, 1]
                         oLUT = [0, 0.35, 0.48, 0.68, 1]
