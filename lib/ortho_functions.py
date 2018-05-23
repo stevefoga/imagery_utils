@@ -627,89 +627,92 @@ def calcStats(args, info):
         if vds is not None:
 
             for band in range(1, vds.RasterCount + 1):
-                calfact, offset = CFlist[band - 1]
+
 
                 # TODO: add stretches here!
 
                 if info.stretch == "ns":
                     LUT = "0:0,{}:{}".format(imax, omax)
-                elif info.stretch == "rf":
-                    #LUT = "0:0,{}:{}".format(imax, omax*imax*CFlist[band-1])
-                    LUT = "0:{},{}:{}".format(offset, imax, imax * calfact * omax + offset)
-                elif info.stretch == "rd":
-                    #LUT = "0:0,{}:{}".format(imax, imax*CFlist[band-1])
-                    LUT = "0:{},{}:{}".format(offset, imax, imax * calfact + offset)
-                elif info.stretch == "mr":
-                    # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
-                    # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
-                    iLUT = [0, 0.125, 0.25, 0.375, 1.0]
-                    oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
-                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
-                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
-                               range(len(iLUT)))
-                    LUT = ",".join(lLUT)
+                else:
+                    calfact, offset = CFlist[band - 1]
 
-                elif info.stretch == "ni":
-                    iLUT = [0.04, 0.18, 0.38, 0.58, 1.0]
-                    oLUT = [0, 0.45, 0.68, 0.81, 1.0]
+                    if info.stretch == "rf":
+                        #LUT = "0:0,{}:{}".format(imax, omax*imax*CFlist[band-1])
+                        LUT = "0:{},{}:{}".format(offset, imax, imax * calfact * omax + offset)
+                    elif info.stretch == "rd":
+                        #LUT = "0:0,{}:{}".format(imax, imax*CFlist[band-1])
+                        LUT = "0:{},{}:{}".format(offset, imax, imax * calfact + offset)
+                    elif info.stretch == "mr":
+                        # iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]
+                        # oLUT = [0, 0.375, 0.625, 0.75, 0.875, 1]
+                        iLUT = [0, 0.125, 0.25, 0.375, 1.0]
+                        oLUT = [0, 0.675, 0.85, 0.9675, 1.2]
+                        #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
+                        lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                                   range(len(iLUT)))
+                        LUT = ",".join(lLUT)
 
-                    '''
-                    # old5 - darker than ni2's old5, but better than old4 (still washed out)
-                    iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
-                    oLUT = [0, 0.4, 0.6, 0.8, 1.0]
-                    
-                    # old4 - contrast completely washed out
-                    iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
-                    oLUT = [0, 0.2, 0.4, 0.6, 1.0]
-                    
-                    # old3 - less gray, slightly brighter than old2 (looks nicer)
-                    iLUT = [0.05, 0.2, 0.4, 0.6, 1.0]
-                    oLUT = [0, 0.45, 0.65, 0.85, 1.0]
-                    
-                    # old2 - very slightly darker than old
-                    iLUT = [0, 0.25, 0.48, 0.7, 1.0]
-                    oLUT = [0, 0.5, 0.7, 0.9, 1.2]
-                    
-                    # old - looks nice, still a bit dark
-                    iLUT = [0, 0.22, 0.44, 0.66, 1.0]
-                    oLUT = [0, 0.5, 0.7, 0.9, 1.1]
-                    '''
+                    elif info.stretch == "ni":
+                        iLUT = [0.04, 0.18, 0.38, 0.58, 1.0]
+                        oLUT = [0, 0.45, 0.68, 0.81, 1.0]
 
-                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
-                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
-                               range(len(iLUT)))
-                    LUT = ",".join(lLUT)
+                        '''
+                        # old5 - darker than ni2's old5, but better than old4 (still washed out)
+                        iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
+                        oLUT = [0, 0.4, 0.6, 0.8, 1.0]
+                        
+                        # old4 - contrast completely washed out
+                        iLUT = [0.1, 0.25, 0.45, 0.6, 1.0]
+                        oLUT = [0, 0.2, 0.4, 0.6, 1.0]
+                        
+                        # old3 - less gray, slightly brighter than old2 (looks nicer)
+                        iLUT = [0.05, 0.2, 0.4, 0.6, 1.0]
+                        oLUT = [0, 0.45, 0.65, 0.85, 1.0]
+                        
+                        # old2 - very slightly darker than old
+                        iLUT = [0, 0.25, 0.48, 0.7, 1.0]
+                        oLUT = [0, 0.5, 0.7, 0.9, 1.2]
+                        
+                        # old - looks nice, still a bit dark
+                        iLUT = [0, 0.22, 0.44, 0.66, 1.0]
+                        oLUT = [0, 0.5, 0.7, 0.9, 1.1]
+                        '''
 
-                elif info.stretch == "ni2":
-                    iLUT = [0.03, 0.225, 0.45, 0.6, 1]
-                    oLUT = [0, 0.35, 0.48, 0.75, 1]
+                        #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
+                        lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                                   range(len(iLUT)))
+                        LUT = ",".join(lLUT)
 
-                    '''
-                    # old5 - lighter than ni's old5 (and less washed out), better than old4
-                    iLUT = [0.06, 0.225, 0.35, 0.6, 1]
-                    oLUT = [0, 0.35, 0.48, 0.68, 1]
-                    
-                    # old4 - contrast completely washed out
-                    iLUT = [0.08, 0.225, 0.35, 0.55, 0.6, 1]
-                    oLUT = [0, 0.3, 0.4, 0.6, 0.8, 1]
-                    
-                    # old3 - slightly lighter than old2, but still dark
-                    iLUT = [0, 0.225, 0.35, 0.55, 0.665, 1]
-                    oLUT = [0, 0.375, 0.425, 0.625, 0.875, 1]
-                    
-                    # old2 - slightly ligher than old, but still dark
-                    iLUT = [0, 0.25, 0.5, 0.75, 1.0]
-                    oLUT = [0, 0.35, 0.55, 0.75, 1.05]
-                    
-                    # old - very dark
-                    iLUT = [0, 0.25, 0.55, 0.75, 1.0]
-                    oLUT = [0, 0.3, 0.5, 0.7, 1.0]
-                    '''
+                    elif info.stretch == "ni2":
+                        iLUT = [0.03, 0.225, 0.45, 0.6, 1]
+                        oLUT = [0, 0.35, 0.48, 0.75, 1]
 
-                    #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
-                    lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
-                               range(len(iLUT)))
-                    LUT = ",".join(lLUT)
+                        '''
+                        # old5 - lighter than ni's old5 (and less washed out), better than old4
+                        iLUT = [0.06, 0.225, 0.35, 0.6, 1]
+                        oLUT = [0, 0.35, 0.48, 0.68, 1]
+                        
+                        # old4 - contrast completely washed out
+                        iLUT = [0.08, 0.225, 0.35, 0.55, 0.6, 1]
+                        oLUT = [0, 0.3, 0.4, 0.6, 0.8, 1]
+                        
+                        # old3 - slightly lighter than old2, but still dark
+                        iLUT = [0, 0.225, 0.35, 0.55, 0.665, 1]
+                        oLUT = [0, 0.375, 0.425, 0.625, 0.875, 1]
+                        
+                        # old2 - slightly ligher than old, but still dark
+                        iLUT = [0, 0.25, 0.5, 0.75, 1.0]
+                        oLUT = [0, 0.35, 0.55, 0.75, 1.05]
+                        
+                        # old - very dark
+                        iLUT = [0, 0.25, 0.55, 0.75, 1.0]
+                        oLUT = [0, 0.3, 0.5, 0.7, 1.0]
+                        '''
+
+                        #lLUT = map(lambda x: "{}:{}".format(iLUT[x] / CFlist[band - 1], oLUT[x] * omax), range(len(iLUT)))
+                        lLUT = map(lambda x: "{}:{}".format(iLUT[x] * imax, oLUT[x] * (calfact * omax * imax + offset)),
+                                   range(len(iLUT)))
+                        LUT = ",".join(lLUT)
 
 
 
