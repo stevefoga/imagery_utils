@@ -685,15 +685,17 @@ def calcStats(args, info):
 
         vds = VRTdriver.CreateCopy(info.vrtfile, wds, 0)
         if vds is not None:
+
             for band in range(1,vds.RasterCount+1):
                 if info.stretch == "ns":
                     LUT = "0:0,{}:{}".format(imax, omax)
                 else:
-                    calfact,offset = CFlist[band-1]
+                    calfact, offset = CFlist[band - 1]
                     if info.stretch == "rf":
                         LUT = "0:{},{}:{}".format(offset*omax, imax, (imax*calfact+offset)*omax)
                     elif info.stretch == "rd":
                         LUT = "0:{},{}:{}".format(offset, imax, imax*calfact+offset)
+
                     elif info.stretch == "mr":
                         # modified reflectance is rf with a non-linear curve applied according to the following histgram points
                         iLUT = [0, 0.125, 0.25, 0.375, 0.625, 1]

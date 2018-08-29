@@ -125,7 +125,7 @@ class TestOrthoFunc(unittest.TestCase):
         ]
         
         for cmd in cmds:
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            p = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell=True)
             se, so = p.communicate()
             print(so)
             print(se)
